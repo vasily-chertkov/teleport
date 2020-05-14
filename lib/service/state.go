@@ -27,23 +27,25 @@ import (
 
 const (
 	// stateOK means Teleport is operating normally.
-	stateOK = 0
-
+	stateOK = iota
 	// stateRecovering means Teleport has begun recovering from a degraded state.
-	stateRecovering = 1
-
+	stateRecovering
 	// stateDegraded means some kind of connection error has occurred to put
 	// Teleport into a degraded state.
-	stateDegraded = 2
+	stateDegraded
+	// stateStarting means the process is starting but hasn't joined the
+	// cluster yet.
+	stateStarting
 )
 
 var stateGauge = prometheus.NewGauge(prometheus.GaugeOpts{
 	Name: teleport.MetricState,
-	Help: "State of the teleport process: 0 - ok, 1 - recovering, 2 - degraded",
+	Help: "State of the teleport process: 0 - ok, 1 - recovering, 2 - degraded, 3 - starting",
 })
 
 func init() {
 	prometheus.MustRegister(stateGauge)
+	stateGauge.Set(stateStarting)
 }
 
 // processState tracks the state of the Teleport process.
@@ -58,7 +60,7 @@ func newProcessState(process *TeleportProcess) *processState {
 	return &processState{
 		process:      process,
 		recoveryTime: process.Clock.Now(),
-		currentState: stateOK,
+		currentState: stateStarting,
 	}
 }
 
