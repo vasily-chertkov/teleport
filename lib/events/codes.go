@@ -201,6 +201,12 @@ var (
 		Name: RoleDeletedEvent,
 		Code: RoleDeletedCode,
 	}
+	// TrustedClusterTokenCreate is emitted when a new join
+	// token for trusted cluster is created.
+	TrustedClusterTokenCreate = Event{
+		Name: TrustedClusterTokenCreateEvent,
+		Code: TrustedClusterTokenCreateCode,
+	}
 )
 
 // OSS event codes start with "T".
@@ -271,6 +277,9 @@ const (
 	AccessRequestUpdateCode = "T5001I"
 	// ResetPasswordTokenCreateCode is the token create event code.
 	ResetPasswordTokenCreateCode = "T6000I"
+	// TrustedClusterTokenCreateCode is the event code for
+	// creating new join token for a trusted cluster.
+	TrustedClusterTokenCreateCode = "T7002I"
 )
 
 // Enterprise event codes starts with "TE".
