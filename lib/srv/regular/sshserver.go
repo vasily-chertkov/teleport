@@ -34,7 +34,6 @@ import (
 	"time"
 
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
 
 	"github.com/gravitational/teleport"
 	"github.com/gravitational/teleport/lib/auth"
@@ -766,7 +765,7 @@ func (s *Server) serveAgent(ctx *srv.ServerContext) error {
 	}
 
 	// start an agent on a unix socket
-	agentServer := &teleagent.AgentServer{Agent: ctx.Parent.GetAgent()}
+	agentServer := &teleagent.AgentServer{Getter: teleagent.AgentGetter(ctx.Parent.StartAgent)}
 	err = agentServer.ListenUnixSocket(socketPath, uid, gid, 0600)
 	if err != nil {
 		return trace.Wrap(err)
@@ -778,7 +777,7 @@ func (s *Server) serveAgent(ctx *srv.ServerContext) error {
 	// ensure that SSHAuthSock and SSHAgentPID are imported into
 	// the current child context.
 	ctx.ImportParentEnv()
-	ctx.Debugf("Opened agent channel for Teleport user %v and socket %v.", ctx.Identity.TeleportUser, socketPath)
+	ctx.Debugf("Starting agent server for Teleport user %v and socket %v.", ctx.Identity.TeleportUser, socketPath)
 	go agentServer.Serve()
 
 	return nil
@@ -1084,7 +1083,9 @@ func (s *Server) handleSessionRequests(ccx *sshutils.ConnectionContext, identity
 			}
 		case result := <-ctx.ExecResultCh:
 			ctx.Debugf("Exec request (%q) complete: %v", result.Command, result.Code)
-
+			//if err := ch.CloseWrite(); err != nil {
+			//	ctx.Warnf("Failed to send EOF: %v", err)
+			//}
 			// The exec process has finished and delivered the execution result, send
 			// the result back to the client, and close the session and channel.
 			_, err := ch.SendRequest("exit-status", false, ssh.Marshal(struct{ C uint32 }{C: uint32(result.Code)}))
@@ -1174,14 +1175,7 @@ func (s *Server) handleAgentForwardNode(req *ssh.Request, ctx *srv.ServerContext
 		return trace.Wrap(err)
 	}
 
-	// open a channel to the client where the client will serve an agent
-	authChannel, _, err := ctx.Conn.OpenChannel(sshutils.AuthAgentRequest, nil)
-	if err != nil {
-		return trace.Wrap(err)
-	}
-
-	// save the agent in the context so it can be used later
-	ctx.Parent.SetAgent(agent.NewClient(authChannel), authChannel)
+	ctx.Parent.SetForwardAgent(true)
 
 	// serve an agent on a unix socket on this node
 	err = s.serveAgent(ctx)
@@ -1210,16 +1204,7 @@ func (s *Server) handleAgentForwardProxy(req *ssh.Request, ctx *srv.ServerContex
 		return trace.Wrap(err)
 	}
 
-	// Open a channel to the client where the client will serve an agent.
-	authChannel, _, err := ctx.Conn.OpenChannel(sshutils.AuthAgentRequest, nil)
-	if err != nil {
-		return trace.Wrap(err)
-	}
-
-	// Save the agent so it can be used when making a proxy subsystem request
-	// later. It will also be used when building a remote connection to the
-	// target node.
-	ctx.Parent.SetAgent(agent.NewClient(authChannel), authChannel)
+	ctx.Parent.SetForwardAgent(true)
 
 	return nil
 }

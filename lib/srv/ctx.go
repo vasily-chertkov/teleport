@@ -457,15 +457,6 @@ func (c *ServerContext) GetAgent() agent.Agent {
 	return c.Parent.GetAgent()
 }
 
-// GetAgentChannel returns the channel over which communication with the agent occurs,
-// or nil if no agent is available in this context.
-func (c *ServerContext) GetAgentChannel() ssh.Channel {
-	if c.Parent == nil {
-		return nil
-	}
-	return c.Parent.GetAgentChannel()
-}
-
 // GetTerm returns a Terminal.
 func (c *ServerContext) GetTerm() Terminal {
 	c.RLock()

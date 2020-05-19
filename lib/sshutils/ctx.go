@@ -17,9 +17,12 @@ limitations under the License.
 package sshutils
 
 import (
+	"context"
 	"io"
 	"net"
 	"sync"
+
+	"github.com/gravitational/teleport/lib/teleagent"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -42,11 +45,15 @@ type ConnectionContext struct {
 	// set for all channels.
 	env map[string]string
 
+	// forwardAgent indicates that agent forwarding has
+	// been requested for this connection.
+	forwardAgent bool
+
 	// agent is a client to remote SSH agent.
-	agent agent.Agent
+	//agent agent.Agent
 
 	// agentCh is SSH channel using SSH agent protocol.
-	agentChannel ssh.Channel
+	//agentChannel ssh.Channel
 	// closers is a list of io.Closer that will be called when session closes
 	// this is handy as sometimes client closes session, in this case resources
 	// will be properly closed and deallocated, otherwise they could be kept hanging.
@@ -60,6 +67,20 @@ func NewConnectionContext(nconn net.Conn, sconn *ssh.ServerConn) *ConnectionCont
 		ServerConn: sconn,
 		env:        make(map[string]string),
 	}
+}
+
+// StartAgent sets up a new agent forwarding channel, scoped to the supplied context.
+func (c *ConnectionContext) StartAgent(ctx context.Context) (agent.Agent, error) {
+	// open a channel to the client where the client will serve an agent
+	agentChannel, _, err := c.ServerConn.OpenChannel(AuthAgentRequest, nil)
+	if err != nil {
+		return nil, trace.Wrap(err)
+	}
+	go func() {
+		<-ctx.Done()
+		agentChannel.Close()
+	}()
+	return agent.NewClient(agentChannel), nil
 }
 
 // SetEnv sets a environment variable within this context.
@@ -92,26 +113,17 @@ func (c *ConnectionContext) ExportEnv(m map[string]string) {
 func (c *ConnectionContext) GetAgent() agent.Agent {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.agent
+	if c.forwardAgent {
+		return teleagent.Lazy(context.TODO(), c.StartAgent)
+	}
+	return nil
 }
 
-// GetAgentChannel returns the channel over which communication with the agent occurs,
-// or nil if no agent is available in this context.
-func (c *ConnectionContext) GetAgentChannel() ssh.Channel {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.agentChannel
-}
-
-// SetAgent sets the agent and channel over which communication with the agent occurs.
-func (c *ConnectionContext) SetAgent(a agent.Agent, channel ssh.Channel) {
+// SetForwardAgent configures this context to support agent forwarding.
+func (c *ConnectionContext) SetForwardAgent(forwardAgent bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.agentChannel != nil {
-		c.agentChannel.Close()
-	}
-	c.agentChannel = channel
-	c.agent = a
+	c.forwardAgent = true
 }
 
 // AddCloser adds any closer in ctx that will be called
@@ -131,10 +143,10 @@ func (c *ConnectionContext) takeClosers() []io.Closer {
 
 	closers := c.closers
 	c.closers = nil
-	if c.agentChannel != nil {
-		closers = append(closers, c.agentChannel)
-		c.agentChannel = nil
-	}
+	//if c.agentChannel != nil {
+	//	closers = append(closers, c.agentChannel)
+	//	c.agentChannel = nil
+	//}
 	return closers
 }
 
