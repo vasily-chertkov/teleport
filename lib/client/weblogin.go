@@ -54,6 +54,9 @@ type SSOLoginConsoleReq struct {
 	CertTTL       time.Duration `json:"cert_ttl"`
 	ConnectorID   string        `json:"connector_id"`
 	Compatibility string        `json:"compatibility,omitempty"`
+	// RouteToCluster is an optional cluster name to route the response
+	// credentials to.
+	RouteToCluster string
 }
 
 // Check makes sure that the request is valid
@@ -101,6 +104,9 @@ type CreateSSHCertReq struct {
 	TTL time.Duration `json:"ttl"`
 	// Compatibility specifies OpenSSH compatibility flags.
 	Compatibility string `json:"compatibility,omitempty"`
+	// RouteToCluster is an optional cluster name to route the response
+	// credentials to.
+	RouteToCluster string
 }
 
 // CreateSSHCertWithU2FReq are passed by web client
@@ -119,6 +125,9 @@ type CreateSSHCertWithU2FReq struct {
 	TTL time.Duration `json:"ttl"`
 	// Compatibility specifies OpenSSH compatibility flags.
 	Compatibility string `json:"compatibility,omitempty"`
+	// RouteToCluster is an optional cluster name to route the response
+	// credentials to.
+	RouteToCluster string
 }
 
 // PingResponse contains data about the Teleport server like supported
@@ -155,6 +164,9 @@ type SSHLoginSSO struct {
 	// BindAddr is an optional host:port address to bind
 	// to for SSO login flows
 	BindAddr string
+	// RouteToCluster is an optional cluster name to route the response
+	// credentials to.
+	RouteToCluster string
 }
 
 // SSHLoginDirect contains SSH login parameters for direct (user/pass/OTP)
@@ -178,6 +190,9 @@ type SSHLoginDirect struct {
 	Pool *x509.CertPool
 	// Compatibility sets compatibility mode for SSH certificates
 	Compatibility string
+	// RouteToCluster is an optional cluster name to route the response
+	// credentials to.
+	RouteToCluster string
 }
 
 // SSHLoginU2F contains SSH login parameters for U2F login.
@@ -198,6 +213,9 @@ type SSHLoginU2F struct {
 	Pool *x509.CertPool
 	// Compatibility sets compatibility mode for SSH certificates
 	Compatibility string
+	// RouteToCluster is an optional cluster name to route the response
+	// credentials to.
+	RouteToCluster string
 }
 
 // ProxySettings contains basic information about proxy settings
@@ -446,12 +464,13 @@ func SSHAgentLogin(ctx context.Context, login SSHLoginDirect) (*auth.SSHLoginRes
 	}
 
 	re, err := clt.PostJSON(ctx, clt.Endpoint("webapi", "ssh", "certs"), CreateSSHCertReq{
-		User:          login.User,
-		Password:      login.Password,
-		OTPToken:      login.OTPToken,
-		PubKey:        login.PubKey,
-		TTL:           login.TTL,
-		Compatibility: login.Compatibility,
+		User:           login.User,
+		Password:       login.Password,
+		OTPToken:       login.OTPToken,
+		PubKey:         login.PubKey,
+		TTL:            login.TTL,
+		Compatibility:  login.Compatibility,
+		RouteToCluster: login.RouteToCluster,
 	})
 	if err != nil {
 		return nil, trace.Wrap(err)
@@ -543,6 +562,7 @@ func SSHAgentU2FLogin(ctx context.Context, login SSHLoginU2F) (*auth.SSHLoginRes
 		PubKey:          login.PubKey,
 		TTL:             login.TTL,
 		Compatibility:   login.Compatibility,
+		RouteToCluster:  login.RouteToCluster,
 	})
 	if err != nil {
 		return nil, trace.Wrap(err)
