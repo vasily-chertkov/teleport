@@ -295,6 +295,19 @@ const (
 	RoleCreatedEvent = "role.created"
 	// RoleDeletedEvent fires when role is deleted.
 	RoleDeletedEvent = "role.deleted"
+
+	// GithubConnectorCreatedEvent fires when a Github connector is created/updated.
+	GithubConnectorCreatedEvent = "github.created"
+	// GithubConnectorDeletedEvent fires when a Github connector is deleted.
+	GithubConnectorDeletedEvent = "github.deleted"
+	// OIDCConnectorCreatedEvent fires when OIDC connector is created/updated.
+	OIDCConnectorCreatedEvent = "oidc.created"
+	// OIDCConnectorDeletedEvent fires when OIDC connector is deleted.
+	OIDCConnectorDeletedEvent = "oidc.deleted"
+	// SAMLConnectorCreatedEvent fires when SAML connector is created/updated.
+	SAMLConnectorCreatedEvent = "saml.created"
+	// SAMLConnectorDeletedEvent fires when SAML connector is deleted.
+	SAMLConnectorDeletedEvent = "saml.deleted"
 )
 
 const (
